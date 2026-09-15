@@ -1,0 +1,263 @@
+# fields/environmental_science.yaml — environmental science and sustainability
+# =============================================================================
+# This profile covers environmental systems across climate, ecology, water,
+# soil, pollution, conservation and environmental policy. It deliberately
+# keeps generic methods (GIS, remote sensing, modelling) as context terms so a
+# methods-heavy advert still needs environmental subject evidence to qualify.
+#
+# Matching rules are documented in fields/template.yaml:
+# lowercase terms match case-insensitively as prefixes, while ALL-CAPS terms
+# match case-sensitive whole words.
+
+name: environmental_science
+description: >
+  Environmental science and sustainability — climate and atmosphere, ecology
+  and biodiversity, water and hydrology, soil and land systems, pollution,
+  conservation and environmental policy
+
+# A post must match at least one of these to qualify. Keep generic methods out
+# of this list; they belong in context_terms below.
+core_anchors:
+  - environmental scien
+  - environmental research
+  - environmental monitor
+  - environmental assess
+  - environmental impact
+  - environmental pollution
+  - environmental chem
+  - environmental toxicolog
+  - ecotoxicolog
+  - environmental microbiolog
+  - ecosystem
+  - ecolog
+  - biodiversity
+  - conservation biolog
+  - conservation ecolog
+  - ecological restoration
+  - restoration ecolog
+  - climate change
+  - climate adaptation
+  - climate mitigation
+  - climate resilience
+  - global change
+  - earth system science
+  - biogeochem
+  - carbon cycle
+  - carbon sequestration
+  - greenhouse gas
+  - methane emission
+  - atmospheric scien
+  - air pollution
+  - air qualit
+  - aerosol
+  - hydrolog
+  - watershed
+  - water quality
+  - water resource
+  - freshwater ecolog
+  - groundwater
+  - hydrogeolog
+  - wastewater
+  - water treatment
+  - soil scien
+  - soil health
+  - soil carbon
+  - soil contamination
+  - land use change
+  - land cover change
+  - marine ecolog
+  - coastal ecolog
+  - ocean acidification
+  - natural resource management
+  - protected area
+  - wildlife management
+  - environmental policy
+  - environmental governance
+  - environmental sustainabil
+  - sustainable development
+  - circular economy
+  - life cycle assessment
+  - environmental justice
+
+# Methods, instruments and general modifiers boost a match but cannot qualify
+# a post on their own.
+context_terms:
+  - remote sensing
+  - earth observation
+  - GIS
+  - geospatial
+  - satellite
+  - spatial analysis
+  - field work
+  - fieldwork
+  - environmental DNA
+  - eDNA
+  - ecological modelling
+  - numerical modelling
+  - climate model
+  - data assimilation
+  - machine learning
+  - time series
+  - sensor network
+  - environmental monitoring
+  - water sampling
+  - air monitoring
+  - soil sampling
+  - contaminant transport
+  - risk assessment
+  - life cycle
+  - carbon footprint
+  - emissions inventory
+  - circularity
+  - nature-based solution
+  - ecosystem service
+  - public health
+
+# Neighbouring fields that share vocabulary with environmental science. A
+# negative term is ignored when a core anchor appears in the title, so genuine
+# interdisciplinary environmental work is not discarded.
+negative_terms:
+  - astrophysic
+  - astronom
+  - particle physic
+  - nuclear physic
+  - quantum
+  - condensed matter
+  - organic synthesis
+  - medicinal chem
+  - drug discover
+  - clinical trial
+  - cell biolog
+  - molecular biolog
+  - genomics
+  - software engineer
+  - pure mathematic
+  - financial econom
+  - business administr
+
+# Search phrases sent to keyword-driven boards. The first entries are used by
+# sources that accept only a small number of queries.
+search_terms:
+  - environmental science
+  - environmental research
+  - climate change
+  - environmental sustainability
+  - ecology
+  - biodiversity conservation
+  - water quality
+  - environmental pollution
+
+weights:
+  core_title: 5.0
+  core_desc: 2.5
+  context_title: 1.0
+  context_desc: 0.5
+  negative: -2.0
+threshold: 2.0
+
+# Environmental Science is OpenAlex field 23. OpenAlex is the primary
+# supervisor source because NASA ADS is not a general environmental database.
+supervisor_source: openalex
+supervisor_ads_db: general
+supervisor_arxiv_cat: physics.geo-ph,q-bio.PE,q-bio.EC
+supervisor_field: 23
+supervisor_topics:
+  - T10895   # Species Distribution and Climate Change
+  - T13394   # Ecology, Conservation, and Geographical Studies
+  - T10029   # Climate Variability and Models
+  - T11312   # Soil Moisture and Remote Sensing
+  - T12773   # Water Quality and Resources Studies
+  - T10330   # Hydrology and Watershed Management Studies
+  - T14468   # Plant Ecology and Soil Science
+  - T10190   # Air Quality and Health Impacts
+  - T10435   # Environmental Impact and Sustainability
+  - T12013   # Sustainable Development and Environmental Policy
+  - T10564   # Wastewater Treatment and Nitrogen Removal
+  - T10226   # Land Use and Ecosystem Services
+supervisor_senior_signal: last_author
+
+# Board-specific vocabularies. These IDs/slugs are the boards' own terms, not
+# Astra field names. EURAXESS 195 is Environmental science; 219 is the nearby
+# Geosciences facet. AcademicJobsOnline uses ES for Environmental Science.
+source_options:
+  euraxess:
+    research_fields: [195]
+    adjacent_research_fields: [219]
+  academicjobsonline:
+    categories: [ES]
+
+subfields:
+  climate_atmosphere:
+    label: Climate & atmosphere
+    topics: [T10895, T10029, T11588, T10190]
+    keywords:
+      - climate change
+      - climate variability
+      - climate modelling
+      - climate adaptation
+      - atmospheric science
+      - air quality
+      - aerosol
+      - greenhouse gas
+      - methane emissions
+      - carbon cycle
+
+  ecology_biodiversity:
+    label: Ecology & biodiversity
+    topics: [T13394, T14039, T10199, T10230]
+    keywords:
+      - ecology
+      - biodiversity
+      - conservation biology
+      - conservation ecology
+      - species distribution
+      - wildlife ecology
+      - ecosystem dynamics
+      - marine ecology
+      - ecological restoration
+      - protected areas
+
+  water_hydrology:
+    label: Water & hydrology
+    topics: [T12773, T10330, T11312, T14249]
+    keywords:
+      - hydrology
+      - watershed management
+      - water quality
+      - water resources
+      - groundwater
+      - hydrogeology
+      - freshwater ecology
+      - aquatic ecosystems
+      - remote sensing hydrology
+      - wastewater treatment
+
+  soil_land_systems:
+    label: Soil & land systems
+    topics: [T14468, T11312, T10226, T10895]
+    keywords:
+      - soil science
+      - soil health
+      - soil carbon
+      - soil microbiology
+      - land use change
+      - land cover
+      - landscape ecology
+      - ecosystem services
+      - agroecology
+      - biogeochemistry
+
+  pollution_sustainability:
+    label: Pollution & sustainability
+    topics: [T10190, T12780, T10435, T12013, T10564]
+    keywords:
+      - environmental pollution
+      - ecotoxicology
+      - environmental chemistry
+      - contaminant transport
+      - heavy metal pollution
+      - water treatment
+      - wastewater treatment
+      - environmental impact assessment
+      - sustainable development
+      - environmental policy

@@ -369,9 +369,10 @@ errors out; the dashboard's search dialog says so and links to the token page.
 A field profile (`astra/fields/<name>.yaml`) is the editable knowledge
 for a subject: `core_anchors` / `context_terms` / `negative_terms` /
 `search_terms` / `weights` / `threshold` (+ optional `subfields`, `departments`,
-supervisor settings). 11 profiles ship (astronomy, physics, biology, chemistry,
-computer_science, economics, engineering, geology, geophysics_hydro,
-condensed_matter, mathematics) plus a fully-commented `template.yaml`.
+supervisor settings). 12 profiles ship (astronomy, physics, biology, chemistry,
+computer_science, economics, engineering, environmental_science, geology,
+geophysics_hydro, condensed_matter, mathematics) plus a fully-commented
+`template.yaml`.
 
 - **CLI:** `--field <name>` (or `--new-field <name>` to scaffold one).
 - **Web/desktop:** pick your field at the top of **Opportunities**, then

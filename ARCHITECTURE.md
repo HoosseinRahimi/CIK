@@ -1,8 +1,8 @@
 # ARCHITECTURE.md
 
-> Fresh map built from the current working tree (2026-08-13). Verified against
-> code, a green test suite (696 pytest passed, offline `--self-test` passed),
-> and the running entry points. Supersedes the old codebase map, which still
+> Map updated against `main` on 2026-09-15. The package split and the running
+> entry points described below are current; the test count refers to the last
+> recorded full-suite run. Supersedes the old codebase map, which still
 > described the pre-refactor 7,368-line monolith and is now stale.
 
 ## 0. Reconciliation with the standing brief (read this first)
@@ -18,8 +18,8 @@ asks (Phase 3) to *split the monolith into a package*.
   matching/ pipeline/ fields/ toolkit/`), ~27.8k LOC total across many files.
 - The desktop app is **Tauri** (Rust shell + PyInstaller FastAPI sidecar).
 - The "live/web version" is a **Next.js 16 dashboard + FastAPI** backend.
-- There are **696 passing tests**, a CI workflow, Docker/Caddy prod hardening,
-  GDPR endpoints, and beta-ops docs.
+- The last recorded run had **696 passing tests**, alongside a CI workflow,
+  Docker/Caddy prod hardening, GDPR endpoints, and beta-ops docs.
 
 So this is a **mature, tested beta product**, not a suspect bulk-dump. The audit
 below is written for *that* reality. Where the brief's Phase 1/2 items are
@@ -151,7 +151,7 @@ the supervisor search found 89 German candidates, failed to save all 89 with
 | `api/` | `app.py` + `routes/` (auth, profile, opportunities, matches, supervisors, bookmarks, preferences, pipeline+jobs, invites, admin, email, apikeys, assistant, account, `v1/`) + `deps`, `schemas`, `serializers`, `security`, `scopes`, `metrics`. |
 | `cli/commands.py` | DB-backed CLI ops: `build_profile_cmd`, `seed_db_cmd`, `show_profile_cmd`, `make_admin_cmd`, `sync_supervisors`. |
 | `toolkit/` | CLI extras (`--write-emails`, `--find-professors`, `--scholarships`). Not exposed via the API. |
-| `fields/` | 11 field profiles (`astronomy`, `physics`, `biology`, `chemistry`, `computer_science`, `economics`, `engineering`, `geology`, `geophysics_hydro`, `condensed_matter`, `mathematics`) + `template.yaml`. |
+| `fields/` | 12 field profiles (`astronomy`, `physics`, `biology`, `chemistry`, `computer_science`, `economics`, `engineering`, `environmental_science`, `geology`, `geophysics_hydro`, `condensed_matter`, `mathematics`) + `template.yaml`. |
 | `selftest.py` | Offline hermetic pipeline self-test (`--self-test`). |
 
 ---
@@ -183,14 +183,20 @@ So the API path runs the crawl **off the request thread** (UI never blocks), and
 since the 2026-08-13 pass the crawl itself is concurrent (`ThreadPoolExecutor`,
 `ASTRA_SOURCE_CONCURRENCY`, default 6) and streams per-source progress events.
 
-### The source layer is NOT field-aware (the core defect)
+### Field-aware source routing
 
-`fetch_sources` decides what to crawl from **`cfg.sources_enabled`** — a single
-global dict in `config.yaml`, identical for every field. `apply_field_profile()`
-(`core/config.py:720`) overlays a profile's taxonomy, weights and supervisor
-routing, but **never touches `sources_enabled`**. So selecting *chemistry* still
-crawls the AAS Job Register, ESO and ESA, and still asks EURAXESS for its
-astronomy facets. See §6 for the full inventory.
+`fetch_sources` resolves the active field through
+`sources.base.resolve_sources_for_field()`. General multi-discipline boards are
+available to every profile; specialist boards are selected only when they
+declare that field or the profile claims them in `sources:`. The user's global
+`sources_enabled` switches still provide the final on/off gate, so a profile
+cannot force a disabled source back on.
+
+Board-specific vocabularies are resolved from `sources/url_registry.yaml`, with
+profile-level `source_options:` taking precedence. This is how EURAXESS facet
+IDs, AcademicJobsOnline categories and FindAPhD discipline slugs stay separate
+from Astra's field names. A new profile therefore needs only its taxonomy and,
+where the board has a subject facet, the corresponding verified source option.
 
 ### Supervisor finder (independent of the crawl)
 `--find-supervisors` (CLI) and `POST /api/supervisors/run` (API →
@@ -239,36 +245,33 @@ the same scorer and emails the top matches.
   `core/tasks.py:145`, which is the prime suspect for the count mismatch.
 - **UI thread:** no crawling happens on it. Every surface talks HTTP to the
   backend; the crawl runs in an rq worker or an in-process daemon thread. The
-  dashboard polls `GET /api/jobs/{id}`. The real UX defect is not blocking but
-  **absence of cooperative cancellation** — `cancel_job` only cancels jobs that
-  have not *started* (`core/tasks.py:505`); a running crawl ignores it.
+  dashboard polls `GET /api/jobs/{id}`. `cancel_job` now cancels queued jobs
+  and signals running jobs cooperatively: the in-flight request may finish,
+  sources not yet started are skipped, and partial results are retained.
 
 ---
 
-## 6. Where the engine assumes astronomy (full inventory)
+## 6. Where field coverage still needs work
 
-Legend: **[BLOCKER]** makes non-astronomy searches wrong · **[TAXONOMY]** is a
-default that a field profile already overrides · **[COPY]** user-visible text.
+Legend: **[TAXONOMY]** is a default that a field profile overrides · **[DATA]**
+is coverage or registry data · **[COPY]** is user-visible text.
 
-### 6.1 Source layer — the real problem
+### 6.1 Source layer — routing is field-aware; coverage is the remaining work
 
 | Where | What is hardcoded | Effect on a non-astronomy search |
 |---|---|---|
-| `config.yaml:52-66` `sources_enabled` | One global on/off list; `aas`, `eso`, `esa` always on | **[BLOCKER]** astronomy-only boards are crawled for every field |
-| `core/config.py:720` `apply_field_profile` | Never writes `sources_enabled` | **[BLOCKER]** a profile cannot restrict its own sources |
-| `sources/euraxess.py:32-39` | `ASTRO = [job_research_field:34/35/37]` facets | **[BLOCKER]** EURAXESS is asked for astronomy offers regardless of field |
-| `sources/findaphd.py:28-31` | `LISTING_URLS = /phds/astrophysics/, /phds/astronomy/` | **[BLOCKER]** FindAPhD only ever returns astronomy projects |
-| `sources/academicjobsonline.py:21-24` | `CATEGORY_URLS = physics/Astronomy, physics/Astrophysics` | **[BLOCKER]** AJO only ever returns astronomy posts |
-| `sources/linkedin.py:24-25` | `LINKEDIN_KEYWORDS = ["PhD astronomy", …]` | **[BLOCKER]** LinkedIn queried with astronomy keywords only |
-| `sources/aas.py`, `eso.py` | AAS Job Register RSS, ESO recruitment RSS | astronomy-only orgs; correct *for astronomy*, noise elsewhere |
-| `sources/esa.py:36` | `ESA_QUERIES = ["PhD", "science"]` | field-neutral but space-sector only |
-| `sources/uni_departments.py:23-331` | `UNIVERSITY_DEPARTMENTS` — 144 astronomy dept URLs | fallback only; profiles with a `departments:` block are respected |
-| `sources/stubs.py` | `iau`, `astrobetter` | disabled; astronomy-only by nature |
+| `config.yaml` `sources_enabled` | One global user switch map | **[DATA]** users can turn sources off globally; field routing then intersects with it |
+| `sources/url_registry.yaml` | Board-specific field mappings | **[DATA]** new fields need verified facet IDs/slugs where a board is not keyword-driven |
+| `sources/aas.py`, `eso.py` | Astronomy-specific boards | **[DATA]** useful only for astronomy; other profiles correctly skip them |
+| `sources/esa.py` | Space-sector search source | **[DATA]** field-neutral but only useful for space-related searches |
+| `sources/uni_departments.py` | Large astronomy fallback registry | **[DATA]** profiles with a `departments:` block should add their own targeted sweep-list |
+| `sources/stubs.py` | `iau`, `astrobetter` | intentionally disabled; the old endpoints or terms of use do not support a safe adapter |
 | `seeds.txt` | hand-picked seed URLs | currently empty of real seeds (21 lines, all comments) |
 
-**Field-driven already** (they query `cfg.search_terms`, so they follow the
-profile today): `nature_careers` (6 terms), `jobs_ac_uk` (4), `jrecin` (3),
-`academictransfer` (2).
+**Keyword-driven sources** use the active profile's `search_terms`: `nature_careers`,
+`jobs_ac_uk`, `jrecin`, `academictransfer`, and LinkedIn. EURAXESS,
+AcademicJobsOnline and FindAPhD use the active profile's verified
+`source_options:` or registry mapping when one exists.
 
 ### 6.2 Taxonomy / scoring defaults
 
@@ -276,7 +279,7 @@ profile today): `nature_careers` (6 terms), `jobs_ac_uk` (4), `jrecin` (3),
 |---|---|---|
 | `core/config.py:102-244` | `CORE_ANCHORS` (135 astro terms), `CONTEXT_TERMS`, `SEARCH_TERMS` built-in defaults | **[TAXONOMY]** — every `fields/*.yaml` replaces them |
 | `core/config.py:355` | `FIELD_PROFILE = "astronomy"` default profile | **[TAXONOMY]** — `config.yaml` currently overrides to `computer_science` |
-| `core/config.py:439-441` | `SUPERVISOR_ADS_DB = "astronomy"`, `SUPERVISOR_ARXIV_CAT = "astro-ph*"` | **[BLOCKER for new fields]** — a profile that omits `supervisor_ads_db` routes to NASA ADS when a token is set (`supervisors/chain.py:297`) |
+| `core/config.py:439-441` | Astronomy-oriented built-in supervisor defaults | **[TAXONOMY]** — `supervisors.chain` guards inherited ADS defaults and routes new fields to OpenAlex; profiles should still declare their OpenAlex field/topics when author-direct ranking is desired |
 | `selftest.py` | Astronomy-only offline fixtures | test-only; needs a non-astro counterpart |
 
 ### 6.3 Coverage asymmetry between profiles
@@ -295,8 +298,10 @@ others" work, not a bug:
 | chemistry / geology | 18 | 8 | 78 / 125 |
 | condensed_matter | 15 | 4 | 51 |
 
-**Missing entirely:** medicine/health, psychology, social sciences, humanities,
-environmental science.
+**Missing entirely:** medicine/health, psychology, social sciences, and
+humanities. `environmental_science` is now shipped as a profile using general
+boards plus verified EURAXESS and AcademicJobsOnline targeting; it does not yet
+have a dedicated university department sweep-list.
 
 ### 6.4 User-visible copy
 
