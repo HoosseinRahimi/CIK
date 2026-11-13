@@ -4,9 +4,13 @@ seeding), and db.repositories (CRUD). Uses an in-memory SQLite database."""
 from __future__ import annotations
 
 import json
+from unittest.mock import Mock
 
+import pytest
 from sqlalchemy import create_engine, func, select
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
+from sqlalchemy.pool import QueuePool
 
 from core.profile_schema import UserProfile
 from db.init import (_parse_iso_date, count_opportunities, create_engine_and_base,
@@ -127,15 +131,59 @@ def test_resolve_db_url_default_and_env(monkeypatch):
     assert resolve_db_url() == "postgresql://u:p@localhost/astra"
 
 
-def test_postgres_engine_uses_queue_pool(monkeypatch):
-    monkeypatch.setenv("DATABASE_URL",
-                       "postgresql://u:p@localhost:5432/astra")
+@pytest.mark.parametrize("db_url", [
+    "postgresql://u:p@localhost:5432/astra",
+    "postgres://u:p@localhost:5432/astra",
+    "postgresql+psycopg2://u:p@localhost:5432/astra",
+])
+def test_postgres_engine_uses_queue_pool(monkeypatch, db_url):
+    monkeypatch.setenv("DATABASE_URL", db_url)
     eng = create_engine_and_base(resolve_db_url())
-    assert eng.pool.__class__.__name__ == "QueuePool"
-    assert eng.pool.size() == 5
-    assert eng.pool._max_overflow == 10
-    assert eng.pool.timeout() == 30
-    assert eng.pool._recycle == 1800
+    try:
+        assert eng.pool.__class__.__name__ == "QueuePool"
+        assert eng.pool.size() == 5
+        assert eng.pool._max_overflow == 10
+        assert eng.pool.timeout() == 30
+        assert eng.pool._recycle == 1800
+        assert eng.dialect.driver == "psycopg2"
+        assert eng.dialect.dbapi.__name__ == "psycopg2"
+    finally:
+        eng.dispose()
+
+
+@pytest.mark.parametrize("drivername", [
+    "postgresql", "postgres", "postgresql+psycopg2",
+])
+def test_postgres_engine_preserves_url_components(drivername):
+    db_url = (f"{drivername}://test%40user:p%40ss%3A%2F%25word"
+              "@db.example.invalid:5433/test_db?sslmode=require"
+              "&application_name=pool%20test&options=-c%20search_path%3Dtest_schema")
+    expected = make_url(db_url).set(drivername="postgresql+psycopg2")
+    eng = create_engine_and_base(db_url)
+    try:
+        assert eng.url == expected
+        assert eng.url.password == "p@ss:/%word"
+    finally:
+        eng.dispose()
+
+
+@pytest.mark.parametrize("drivername", [
+    "postgresql+psycopg", "postgresql+pg8000",
+])
+def test_postgres_engine_preserves_explicit_driver(monkeypatch, drivername):
+    db_url = (f"{drivername}://test%40user:p%40ss%3A%2F%25word"
+              "@db.example.invalid:5433/test_db?sslmode=require"
+              "&application_name=pool%20test")
+    factory = Mock(return_value=object())
+    monkeypatch.setattr("db.init.create_engine", factory)
+    eng = create_engine_and_base(db_url)
+    assert eng is factory.return_value
+    url = make_url(factory.call_args.args[0])
+    assert url == make_url(db_url)
+    assert factory.call_args.kwargs == {
+        "future": True, "poolclass": QueuePool, "pool_size": 5,
+        "max_overflow": 10, "pool_timeout": 30, "pool_recycle": 1800,
+    }
 
 
 def test_sqlite_engine_has_no_queue_pool():

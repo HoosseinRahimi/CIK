@@ -15,6 +15,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 from sqlalchemy import Engine, create_engine, event, func, select
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import QueuePool
 
@@ -57,11 +58,14 @@ def create_engine_and_base(db_url: str = DEFAULT_DB_URL) -> Engine:
     PostgreSQL gets a bounded ``QueuePool``; SQLite keeps its default
     (SQLAlchemy uses SingletonThreadPool/NullPool there, which is correct).
     """
+    url = make_url(db_url)
+    if url.drivername in ("postgresql", "postgres"):
+        url = url.set(drivername="postgresql+psycopg2")
     kwargs: dict = {"future": True}
-    if db_url.startswith(("postgresql://", "postgres://")):
+    if url.get_backend_name() == "postgresql":
         kwargs.update(poolclass=QueuePool, pool_size=5, max_overflow=10,
                       pool_timeout=30, pool_recycle=1800)
-    engine = create_engine(db_url, **kwargs)
+    engine = create_engine(url, **kwargs)
     if db_url.startswith("sqlite"):
         event.listen(engine, "connect", _ensure_foreign_keys)
     return engine
