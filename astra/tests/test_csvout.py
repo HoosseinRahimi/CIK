@@ -52,7 +52,7 @@ def test_output_is_byte_identical_to_pandas(name, tmp_path):
     frame = pd.DataFrame(rows, columns=cols) if cols else pd.DataFrame(rows)
     if cols:
         frame = frame[cols]
-    frame.to_csv(theirs, index=False)
+    frame.to_csv(theirs, index=False, lineterminator="\n")
     write_csv(str(ours), rows, cols)
 
     assert ours.read_bytes() == theirs.read_bytes()

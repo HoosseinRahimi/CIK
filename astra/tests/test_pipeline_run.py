@@ -84,11 +84,25 @@ def test_write_html_embeds_payload(tmp_path):
     assert "PhD in stellar astrophysics" in html
 
 
-def test_run_injected_raw(tmp_path, capsys):
+def test_run_injected_raw(tmp_path, capsys, monkeypatch):
+    from datetime import date
+
+    import pipeline.filter as FL
+    import pipeline.freshness as FR
+
+    class FixedDate(date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 6, 15)
+
+    monkeypatch.setattr(FL, "date", FixedDate)
+    monkeypatch.setattr(FR, "date", FixedDate)
+
     cfg = _cfg(tmp_path, write_html=False)
     cfg.max_age_days = 365
     raw = [_rec(url="https://ex.org/j/1", deadline="2026-09-30"),
-           _rec(url="https://ex.org/j/2", deadline="2020-01-01")]  # expired
+           _rec(title="PhD in radio astronomy", url="https://ex.org/j/2",
+                deadline="2020-01-01")]  # expired
     out = RN.run(cfg, injected_raw=raw)
     assert len(out) == 1
     assert out[0]["url"] == "https://ex.org/j/1"
