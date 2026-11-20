@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from datetime import date, timedelta
 
 import pandas as pd
 
@@ -87,8 +88,11 @@ def test_write_html_embeds_payload(tmp_path):
 def test_run_injected_raw(tmp_path, capsys):
     cfg = _cfg(tmp_path, write_html=False)
     cfg.max_age_days = 365
-    raw = [_rec(url="https://ex.org/j/1", deadline="2026-09-30"),
-           _rec(url="https://ex.org/j/2", deadline="2020-01-01")]  # expired
+    today = date.today()
+    raw = [_rec(url="https://ex.org/j/1",
+                deadline=(today + timedelta(days=30)).isoformat()),
+           _rec(url="https://ex.org/j/2",
+                deadline=(today - timedelta(days=1)).isoformat())]  # expired
     out = RN.run(cfg, injected_raw=raw)
     assert len(out) == 1
     assert out[0]["url"] == "https://ex.org/j/1"

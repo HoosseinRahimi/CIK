@@ -36,6 +36,7 @@ litellm>=1.40              # provider-agnostic LLM wrapper (core/llm.py);
 # Phase 3 — Database (Track C)
 sqlalchemy>=2.0            # ORM models + repos (db/*.py)
 psycopg2-binary>=2.9       # PostgreSQL driver (optional; needed for PG backend)
+psycopg[binary]>=3.2      # default PostgreSQL driver in SQLAlchemy 2.1+
 
 # Sprint 04 — REST API + Auth (api/*)
 fastapi>=0.110             # REST framework (api/app.py)
